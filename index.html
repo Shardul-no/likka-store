@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <title>Liquor Compass</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0a0a0a;
+      --amber:#f5a623;
+      --amber-soft:rgba(245,166,35,.35);
+      --amber-faint:rgba(245,166,35,.14);
+      --text:#f3e9d2;
+      --muted:rgba(243,233,210,.7);
+      --danger:#ff6b6b;
+      --panel:rgba(10,10,10,.72);
+      --grid:rgba(245,166,35,.08);
+      --glow:0 0 10px rgba(245,166,35,.55), 0 0 30px rgba(245,166,35,.22);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    body {
+      position: relative;
+      display: grid;
+      place-items: center;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .bg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .bg::before,
+    .bg::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
+
+    .bg::before {
+      background:
+        radial-gradient(circle at center, rgba(245,166,35,.08), transparent 35%),
+        radial-gradient(circle at center, transparent 0 35%, rgba(245,166,35,.03) 36%, transparent 37%),
+        radial-gradient(circle at center, transparent 0 61%, rgba(245,166,35,.04) 62%, transparent 63%);
+      opacity: .65;
+    }
+
+    .bg::after {
+      background-image:
+        linear-gradient(to right, transparent 0, transparent 95%, rgba(245,166,35,.08) 100%),
+        linear-gradient(to bottom, transparent 0, transparent 95%, rgba(245,166,35,.08) 100%);
+      background-size: 28px 28px;
+      opacity: .24;
+      mask-image: radial-gradient(circle at center, black 0 42%, transparent 80%);
+    }
+
+    .radar {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity .35s ease;
+      background:
+        radial-gradient(circle at center, transparent 0 20%, rgba(245,166,35,.08) 20.2%, transparent 20.4%),
+        radial-gradient(circle at center, transparent 0 39%, rgba(245,166,35,.05) 39.2%, transparent 39.4%),
+        radial-gradient(circle at center, transparent 0 58%, rgba(245,166,35,.04) 58.2%, transparent 58.4%);
+    }
+
+    .radar::after {
+      content: "";
+      position: absolute;
+      inset: -15%;
+      background: conic-gradient(from 0deg, transparent 0deg, rgba(245,166,35,.0) 0deg, rgba(245,166,35,.33) 15deg, transparent 42deg, transparent 360deg);
+      mask-image: radial-gradient(circle at center, black 0 39%, transparent 73%);
+      animation: sweep 2.8s linear infinite;
+      filter: blur(1px);
+    }
+
+    .state-searching .radar { opacity: 1; }
+
+    @keyframes sweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      align-items: center;
+      padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+    }
+
+    .hud-top,
+    .hud-bottom {
+      z-index: 3;
+      text-align: center;
+      text-shadow: 0 0 12px rgba(245,166,35,.24);
+      letter-spacing: .06em;
+    }
+
+    .hud-top {
+      align-self: start;
+      min-height: 3.5rem;
+      display: grid;
+      gap: .35rem;
+      justify-items: center;
+    }
+
+    .store-name {
+      font-size: clamp(1rem, 3.3vw, 1.35rem);
+      color: var(--text);
+      max-width: min(92vw, 42rem);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: opacity .35s ease, transform .35s ease;
+    }
+
+    .state-searching .store-name,
+    .state-error .store-name,
+    .state-desktop .store-name {
+      opacity: .95;
+      transform: translateY(0);
+    }
+
+    .status {
+      color: var(--amber);
+      font-size: .9rem;
+      opacity: .85;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .center {
+      position: relative;
+      display: grid;
+      place-items: center;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .compass-shell {
+      position: relative;
+      width: min(72vw, 20rem);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      margin: 0 auto;
+      filter: drop-shadow(0 0 18px rgba(245,166,35,.22));
+    }
+
+    .glow-ring {
+      position: absolute;
+      inset: 12%;
+      border-radius: 50%;
+      border: 1px solid rgba(245,166,35,.12);
+      box-shadow: inset 0 0 26px rgba(245,166,35,.05);
+      opacity: .75;
+    }
+
+    .pointer {
+      position: absolute;
+      width: 0;
+      height: 0;
+      transform: rotate(0deg);
+      transition: transform .4s ease;
+      will-change: transform;
+      filter: drop-shadow(0 0 10px rgba(245,166,35,.5));
+    }
+
+    .pointer::before,
+    .pointer::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      clip-path: polygon(50% 0, 100% 100%, 50% 82%, 0 100%);
+    }
+
+    .pointer::before {
+      width: clamp(8rem, 24vw, 11rem);
+      height: clamp(13rem, 35vw, 17rem);
+      background: linear-gradient(180deg, rgba(245,166,35,1) 0%, rgba(245,166,35,.82) 48%, rgba(245,166,35,.38) 100%);
+      top: calc(clamp(13rem, 35vw, 17rem) * -0.83);
+      box-shadow: 0 0 0 1px rgba(245,166,35,.22), 0 0 30px rgba(245,166,35,.16);
+    }
+
+    .pointer::after {
+      width: clamp(2rem, 5vw, 2.7rem);
+      height: clamp(2rem, 5vw, 2.7rem);
+      background: rgba(10,10,10,.95);
+      border: 1px solid rgba(245,166,35,.65);
+      border-radius: 50%;
+      top: calc(clamp(13rem, 35vw, 17rem) * -0.06);
+      box-shadow: 0 0 0 6px rgba(245,166,35,.07), 0 0 20px rgba(245,166,35,.15);
+      clip-path: none;
+    }
+
+    .state-locked .pointer::before {
+      animation: pulse 1.3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: translateX(-50%) scale(1); filter: brightness(1); }
+      50% { transform: translateX(-50%) scale(1.03); filter: brightness(1.2); }
+    }
+
+    .center-dot {
+      position: absolute;
+      width: .9rem;
+      height: .9rem;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: var(--glow);
+      z-index: 2;
+    }
+
+    .scanlines {
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(to bottom, transparent 0, transparent 97%, rgba(245,166,35,.05) 100%);
+      background-size: 100% 6px;
+      opacity: .18;
+      pointer-events: none;
+    }
+
+    .hud-bottom {
+      align-self: end;
+      display: grid;
+      gap: .5rem;
+      justify-items: center;
+      min-height: 4rem;
+    }
+
+    .nearby-panel {
+      position: absolute;
+      left: 50%;
+      bottom: calc(max(18px, env(safe-area-inset-bottom)) + 5.2rem);
+      transform: translateX(-50%);
+      width: min(92vw, 34rem);
+      display: grid;
+      gap: .45rem;
+      z-index: 4;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+
+    .state-searching .nearby-panel,
+    .state-locked .nearby-panel {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .nearby-title {
+      font-size: .72rem;
+      letter-spacing: .18em;
+      color: var(--muted);
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .nearby-list {
+      display: grid;
+      gap: .45rem;
+      max-height: 34vh;
+      overflow: auto;
+      padding-right: .15rem;
+    }
+
+    .nearby-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: .35rem .75rem;
+      width: 100%;
+      border: 1px solid rgba(245,166,35,.22);
+      background: rgba(10,10,10,.82);
+      color: var(--text);
+      font: inherit;
+      text-align: left;
+      padding: .72rem .85rem;
+      border-radius: .9rem;
+      box-shadow: 0 0 0 1px rgba(245,166,35,.05), 0 0 16px rgba(245,166,35,.05);
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+    }
+
+    .nearby-item:hover {
+      border-color: rgba(245,166,35,.45);
+    }
+
+    .nearby-item[aria-pressed="true"] {
+      border-color: rgba(245,166,35,.62);
+      background: rgba(245,166,35,.08);
+      box-shadow: 0 0 0 1px rgba(245,166,35,.14), 0 0 22px rgba(245,166,35,.13);
+    }
+
+    .nearby-name {
+      font-size: .9rem;
+      letter-spacing: .05em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nearby-meta {
+      font-size: .72rem;
+      letter-spacing: .1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      justify-self: end;
+    }
+
+    .nearby-action {
+      grid-column: 1 / -1;
+      font-size: .68rem;
+      letter-spacing: .14em;
+      color: rgba(243,233,210,.62);
+      text-transform: uppercase;
+    }
+
+    .distance {
+      font-size: clamp(1.1rem, 3.7vw, 1.5rem);
+      color: var(--text);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .35s ease, transform .35s ease;
+    }
+
+    .state-locked .distance {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .subtext {
+      font-size: .82rem;
+      color: var(--muted);
+      max-width: min(92vw, 42rem);
+      line-height: 1.35;
+      min-height: 1.2rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+
+    .recalibrate {
+      position: absolute;
+      right: max(18px, env(safe-area-inset-right));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      z-index: 4;
+      border: 1px solid rgba(245,166,35,.35);
+      background: rgba(10,10,10,.86);
+      color: var(--amber);
+      font: inherit;
+      font-size: .75rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      padding: .7rem .85rem;
+      border-radius: 999px;
+      box-shadow: 0 0 0 1px rgba(245,166,35,.06), 0 0 24px rgba(245,166,35,.08);
+      backdrop-filter: blur(8px);
+      cursor: pointer;
+    }
+
+    .recalibrate:active {
+      transform: translateY(1px);
+    }
+
+    .desktop-note {
+      display: none;
+      margin-top: .5rem;
+      color: var(--muted);
+      font-size: .82rem;
+      letter-spacing: .08em;
+      max-width: min(92vw, 38rem);
+    }
+
+    .state-desktop .desktop-note { display: block; }
+
+    .error {
+      color: var(--danger);
+    }
+
+    .hidden {
+      opacity: 0 !important;
+      transform: translateY(10px) !important;
+      pointer-events: none;
+    }
+
+    @media (min-width: 900px) and (pointer: fine) {
+      .compass-shell { width: min(35vw, 18rem); }
+      .pointer::before {
+        width: 9rem;
+        height: 14rem;
+        top: -11.6rem;
+      }
+      .pointer::after {
+        top: -.85rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="radar"></div>
+    <div class="scanlines"></div>
+  </div>
+
+  <main class="app state-searching" id="app">
+    <section class="hud-top">
+      <div class="store-name" id="storeName">SCANNING…</div>
+      <div class="status" id="status">REQUESTING LOCATION</div>
+      <div class="desktop-note" id="desktopNote">Open this on a mobile device with compass support to get live waypoint guidance.</div>
+    </section>
+
+    <section class="center" aria-label="Waypoint compass">
+      <div class="compass-shell" aria-hidden="true">
+        <div class="glow-ring"></div>
+        <div class="pointer" id="pointer"></div>
+        <div class="center-dot"></div>
+      </div>
+    </section>
+
+    <section class="hud-bottom">
+      <div class="distance" id="distance">--</div>
+      <div class="subtext" id="subtext">SCANNING…</div>
+    </section>
+
+    <section class="nearby-panel" id="nearbyPanel" aria-label="Nearby alternatives">
+      <div class="nearby-title">Other Closest Targets</div>
+      <div class="nearby-list" id="nearbyList"></div>
+    </section>
+
+    <button class="recalibrate" id="recalibrate" type="button">Recalibrate</button>
+  </main>
+
+  <script>
+    (() => {
+      const app = document.getElementById('app');
+      const pointer = document.getElementById('pointer');
+      const statusEl = document.getElementById('status');
+      const storeNameEl = document.getElementById('storeName');
+      const distanceEl = document.getElementById('distance');
+      const subtextEl = document.getElementById('subtext');
+      const nearbyPanelEl = document.getElementById('nearbyPanel');
+      const nearbyListEl = document.getElementById('nearbyList');
+      const recalibrateBtn = document.getElementById('recalibrate');
+
+      const state = {
+        geo: null,
+        heading: null,
+        target: null,
+        candidates: [],
+        lockBeepPlayed: false,
+        audioCtx: null,
+        audioUnlocked: false,
+        orientationActive: false,
+        useDesktopFallback: !('DeviceOrientationEvent' in window),
+        watchId: null,
+        overpassDisabled: location.protocol === 'file:',
+      };
+
+      function setState(name) {
+        app.classList.remove('state-searching', 'state-locked', 'state-error', 'state-desktop');
+        app.classList.add(name);
+      }
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatDistanceLabel(distanceMeters) {
+        if (!Number.isFinite(distanceMeters)) return '--';
+        if (distanceMeters < 1000) return `${Math.max(1, Math.round(distanceMeters))} m`;
+        return `${(distanceMeters / 1000).toFixed(distanceMeters >= 10000 ? 0 : 1)} km`;
+      }
+
+      function renderNearbyList() {
+        nearbyListEl.replaceChildren();
+        const currentId = state.target?.id;
+        const others = state.candidates.filter(place => place.id !== currentId).slice(0, 5);
+        nearbyPanelEl.style.display = others.length ? '' : 'none';
+        for (const place of others) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'nearby-item';
+          button.setAttribute('aria-pressed', 'false');
+          button.innerHTML = `
+            <div class="nearby-name">${escapeHtml(place.name || 'Unknown liquor store')}</div>
+            <div class="nearby-meta">${escapeHtml(formatDistanceLabel(place.distance))}</div>
+            <div class="nearby-action">${escapeHtml(place.kind || 'Target')} · Tap to lock</div>
+          `;
+          button.addEventListener('click', async () => {
+            await unlockAudio();
+            setLockedTarget(place, true);
+          });
+          nearbyListEl.appendChild(button);
+        }
+      }
+
+      function setStatus(text, kind = '') {
+        statusEl.textContent = text;
+        statusEl.classList.toggle('error', kind === 'error');
+      }
+
+      function setSubtext(text) {
+        subtextEl.textContent = text;
+      }
+
+      function setStoreName(text) {
+        storeNameEl.textContent = text;
+      }
+
+      function setDistance(distanceMeters) {
+        if (!Number.isFinite(distanceMeters)) {
+          distanceEl.textContent = '--';
+          return;
+        }
+        if (distanceMeters < 1000) {
+          distanceEl.textContent = `${Math.max(1, Math.round(distanceMeters))} m away`;
+        } else {
+          distanceEl.textContent = `${(distanceMeters / 1000).toFixed(distanceMeters >= 10000 ? 0 : 1)} km away`;
+        }
+      }
+
+      function formatWalkTime(distanceMeters) {
+        const km = distanceMeters / 1000;
+        const minutes = Math.max(1, Math.round((km / 4.8) * 60));
+        if (minutes < 60) return `Walk time ~${minutes} min`;
+        const hours = Math.floor(minutes / 60);
+        const rem = minutes % 60;
+        return `Walk time ~${hours}h ${rem}m`;
+      }
+
+      function normalizeHeading(evt) {
+        if (typeof evt.webkitCompassHeading === 'number') {
+          return evt.webkitCompassHeading;
+        }
+        if (typeof evt.alpha === 'number') {
+          return (360 - evt.alpha) % 360;
+        }
+        return null;
+      }
+
+      function angleDifference(a, b) {
+        let diff = (a - b + 540) % 360 - 180;
+        return diff;
+      }
+
+      function bearingBetween(lat1, lon1, lat2, lon2) {
+        const toRad = deg => deg * Math.PI / 180;
+        const toDeg = rad => rad * 180 / Math.PI;
+        const dLon = toRad(lon2 - lon1);
+        const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+        const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                  Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+        return (toDeg(Math.atan2(y, x)) + 360) % 360;
+      }
+
+      function haversineMeters(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const toRad = deg => deg * Math.PI / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat / 2) ** 2 +
+          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(a));
+      }
+
+      function rotatePointer() {
+        if (!state.target || !state.geo) return;
+        if (state.heading == null) {
+          pointer.style.transform = 'rotate(0deg)';
+          return;
+        }
+        const targetBearing = bearingBetween(state.geo.lat, state.geo.lon, state.target.lat, state.target.lon);
+        const relative = angleDifference(targetBearing, state.heading);
+        pointer.style.transform = `rotate(${relative}deg)`;
+      }
+
+      async function unlockAudio() {
+        if (!navigator.userActivation || !navigator.userActivation.isActive) return false;
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          if (!state.audioCtx) state.audioCtx = new AC();
+          if (state.audioCtx.state === 'suspended') await state.audioCtx.resume();
+          state.audioUnlocked = true;
+          return true;
+        } catch (_) {}
+        return false;
+      }
+
+      function beep() {
+        if (!state.audioUnlocked || !state.audioCtx) return;
+        try {
+          const ctx = state.audioCtx;
+          const now = ctx.currentTime;
+          const gain = ctx.createGain();
+          const osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, now);
+          osc.frequency.exponentialRampToValueAtTime(1320, now + 0.05);
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.exponentialRampToValueAtTime(0.05, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } catch (_) {}
+      }
+
+      function setLockedTarget(place) {
+        state.target = place;
+        setState('state-locked');
+        setStatus('LOCKED');
+        setStoreName(`LOCKED: ${place.name || 'Unknown liquor store'}`);
+        setDistance(place.distance);
+        const label = place.kind ? `${place.kind} · ${place.source}` : place.source;
+        setSubtext(`${formatWalkTime(place.distance)} · ${label}`);
+        if (!state.lockBeepPlayed) {
+          state.lockBeepPlayed = true;
+          beep();
+        }
+        rotatePointer();
+        renderNearbyList();
+      }
+
+      function setError(message) {
+        setState('state-error');
+        setStatus('ERROR', 'error');
+        setStoreName(message);
+        distanceEl.textContent = '';
+        setSubtext('Location or store scan failed');
+        state.candidates = [];
+        renderNearbyList();
+      }
+
+      async function getCurrentPosition() {
+        return new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error('Geolocation unavailable'));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0,
+          });
+        });
+      }
+
+      async function searchGooglePlaces(lat, lon) {
+        const key = new URLSearchParams(location.search).get('googleKey') || window.GOOGLE_PLACES_API_KEY;
+        if (!key) return [];
+        const radius = 10000;
+        const queries = [
+          { keyword: 'liquor store', type: 'liquor_store', kind: 'Liquor store' },
+          { keyword: 'wine shop', type: 'liquor_store', kind: 'Wine shop' },
+          { keyword: 'wine', type: 'store', kind: 'Wine store' },
+          { keyword: 'bar', type: 'bar', kind: 'Bar' },
+          { keyword: 'resto bar', type: 'restaurant', kind: 'Resto bar' },
+        ];
+        const seen = new Map();
+        for (const query of queries) {
+          const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json');
+          url.searchParams.set('location', `${lat},${lon}`);
+          url.searchParams.set('radius', String(radius));
+          url.searchParams.set('keyword', query.keyword);
+          url.searchParams.set('type', query.type);
+          url.searchParams.set('key', key);
+          let res;
+          try {
+            res = await fetch(url.toString(), { mode: 'cors' });
+          } catch (_) {
+            continue;
+          }
+          if (!res.ok) continue;
+          let data;
+          try {
+            data = await res.json();
+          } catch (_) {
+            continue;
+          }
+          if (!Array.isArray(data.results) || !data.results.length) continue;
+          for (const r of data.results) {
+            if (!r.geometry || !r.geometry.location) continue;
+            const p = r.geometry.location;
+            const name = r.name || query.kind;
+            const keyId = `${name}|${p.lat.toFixed(6)}|${p.lng.toFixed(6)}`;
+            const candidate = {
+              id: `g:${keyId}`,
+              name,
+              kind: query.kind,
+              lat: p.lat,
+              lon: p.lng,
+              distance: haversineMeters(lat, lon, p.lat, p.lng),
+              bearing: bearingBetween(lat, lon, p.lat, p.lng),
+              source: 'Google Places',
+            };
+            const prev = seen.get(keyId);
+            if (!prev || candidate.distance < prev.distance) seen.set(keyId, candidate);
+          }
+        }
+        return [...seen.values()].sort((a, b) => a.distance - b.distance);
+      }
+
+      async function searchOverpass(lat, lon) {
+        if (state.overpassDisabled) return [];
+        const radius = 7000;
+        const queries = [
+          `
+          [out:json][timeout:20];
+          (
+            node(around:${radius},${lat},${lon})["shop"="alcohol"];
+            way(around:${radius},${lat},${lon})["shop"="alcohol"];
+            relation(around:${radius},${lat},${lon})["shop"="alcohol"];
+            node(around:${radius},${lat},${lon})["amenity"="alcohol"];
+            way(around:${radius},${lat},${lon})["amenity"="alcohol"];
+            relation(around:${radius},${lat},${lon})["amenity"="alcohol"];
+          );
+          out center tags;
+        `,
+          `
+          [out:json][timeout:20];
+          (
+            node(around:${radius},${lat},${lon})["amenity"="bar"];
+            way(around:${radius},${lat},${lon})["amenity"="bar"];
+            relation(around:${radius},${lat},${lon})["amenity"="bar"];
+            node(around:${radius},${lat},${lon})["amenity"="pub"];
+            way(around:${radius},${lat},${lon})["amenity"="pub"];
+            relation(around:${radius},${lat},${lon})["amenity"="pub"];
+          );
+          out center tags;
+        `,
+          `
+          [out:json][timeout:20];
+          (
+            node(around:${radius},${lat},${lon})["amenity"="restaurant"]["name"~"wine|wines|bar|resto",i];
+            way(around:${radius},${lat},${lon})["amenity"="restaurant"]["name"~"wine|wines|bar|resto",i];
+            relation(around:${radius},${lat},${lon})["amenity"="restaurant"]["name"~"wine|wines|bar|resto",i];
+          );
+          out center tags;
+        `
+        ];
+
+        for (const query of queries) {
+          try {
+            const res = await fetch('https://overpass-api.de/api/interpreter', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+              body: `data=${encodeURIComponent(query)}`
+            });
+            if (!res.ok) continue;
+            const data = await res.json();
+            const candidates = (data.elements || [])
+              .map(el => {
+                const point = el.lat != null ? { lat: el.lat, lon: el.lon } : el.center;
+                if (!point) return null;
+                const tags = el.tags || {};
+                const name = tags.name || tags.brand || tags.operator || 'Liquor store';
+                const kind = tags.shop === 'alcohol'
+                  ? 'Liquor store'
+                  : tags.amenity === 'bar'
+                    ? 'Bar'
+                    : tags.amenity === 'pub'
+                      ? 'Pub'
+                      : tags.amenity === 'restaurant'
+                        ? 'Resto bar'
+                        : 'Liquor store';
+                return {
+                  id: `o:${name}|${point.lat.toFixed(6)}|${point.lon.toFixed(6)}`,
+                  name,
+                  kind,
+                  lat: point.lat,
+                  lon: point.lon,
+                  distance: haversineMeters(lat, lon, point.lat, point.lon),
+                  bearing: bearingBetween(lat, lon, point.lat, point.lon),
+                  source: 'OpenStreetMap',
+                };
+              })
+              .filter(Boolean)
+              .sort((a, b) => a.distance - b.distance);
+            if (candidates.length) return candidates;
+          } catch (_) {
+            continue;
+          }
+        }
+        state.overpassDisabled = true;
+        return [];
+      }
+
+      async function findNearestStore(lat, lon) {
+        setState('state-searching');
+        setStatus('SCANNING…');
+        setStoreName('SCANNING…');
+        setDistance(NaN);
+        setSubtext('Searching liquor stores, wine shops, bars, and resto bars');
+
+        const all = [];
+        try {
+          const google = await searchGooglePlaces(lat, lon);
+          if (google.length) all.push(...google);
+        } catch (_) {}
+
+        try {
+          const osm = await searchOverpass(lat, lon);
+          if (osm.length) all.push(...osm);
+        } catch (_) {}
+
+        const unique = [];
+        const seen = new Set();
+        for (const place of all.sort((a, b) => a.distance - b.distance)) {
+          const key = place.id || `${place.name}|${place.lat}|${place.lon}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          unique.push(place);
+        }
+        state.candidates = unique;
+        renderNearbyList();
+
+        if (unique.length) return unique[0];
+
+        if (state.overpassDisabled && !window.GOOGLE_PLACES_API_KEY && !new URLSearchParams(location.search).get('googleKey')) {
+          setError('Open via localhost or add a Google Places key');
+          return null;
+        }
+
+        return null;
+      }
+
+      function onHeadingEvent(evt) {
+        const heading = normalizeHeading(evt);
+        if (heading == null) return;
+        state.heading = heading;
+        if (state.target && state.geo) rotatePointer();
+      }
+
+      async function initOrientation({ silent = false } = {}) {
+        if (state.orientationActive || state.useDesktopFallback) return true;
+        const needsPermission = typeof DeviceOrientationEvent.requestPermission === 'function';
+        if (needsPermission) {
+          try {
+            const result = await DeviceOrientationEvent.requestPermission();
+            if (result !== 'granted') {
+              if (!silent) setError('Motion permission denied');
+              return false;
+            }
+          } catch (_) {
+            if (!silent) setError('Motion permission unavailable');
+            return false;
+          }
+        }
+
+        window.addEventListener('deviceorientationabsolute', onHeadingEvent, true);
+        window.addEventListener('deviceorientation', onHeadingEvent, true);
+        state.orientationActive = true;
+        return true;
+      }
+
+      function activateDesktopMode(place) {
+        setState('state-desktop');
+        setStatus('DESKTOP MODE');
+        setStoreName(place?.name || 'Compass unavailable on desktop');
+        distanceEl.textContent = Number.isFinite(place?.bearing)
+          ? `BEARING ${Math.round(place.bearing)}°`
+          : 'BEARING --';
+        setSubtext(`${formatWalkTime(place?.distance || 0)} · open on mobile for live compass heading`);
+        if (place && Number.isFinite(place.bearing)) {
+          pointer.style.transform = `rotate(${place.bearing}deg)`;
+        } else {
+          pointer.style.transform = 'rotate(0deg)';
+        }
+      }
+
+      async function start() {
+        try {
+          const pos = await getCurrentPosition();
+          state.geo = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        } catch (err) {
+          setError(err && err.code === 1 ? 'Location denied' : 'Location unavailable');
+          return;
+        }
+
+        const store = await findNearestStore(state.geo.lat, state.geo.lon);
+        if (!store) {
+          setError('No liquor stores found nearby');
+          return;
+        }
+        setLockedTarget(store);
+        if (state.useDesktopFallback) {
+          activateDesktopMode(store);
+        } else {
+          initOrientation({ silent: true }).catch(() => {});
+        }
+      }
+
+      async function recalibrate() {
+        state.heading = null;
+        state.target = null;
+        state.lockBeepPlayed = false;
+        setState('state-searching');
+        setStatus('SCANNING…');
+        setStoreName('SCANNING…');
+        setDistance(NaN);
+        setSubtext('Recalibrating waypoint...');
+        unlockAudio();
+        if (state.geo) {
+          try {
+            await initOrientation();
+          } catch (_) {}
+          try {
+            const store = await findNearestStore(state.geo.lat, state.geo.lon);
+            if (!store) {
+              setError('No liquor stores found nearby');
+              return;
+            }
+            setLockedTarget(store);
+            if (state.useDesktopFallback) {
+              activateDesktopMode(store);
+            }
+          } catch (_) {
+            setError('Store scan failed');
+          }
+        }
+      }
+
+      recalibrateBtn.addEventListener('click', async () => {
+        await unlockAudio();
+        if (!state.useDesktopFallback) {
+          if (!state.geo) {
+            await start();
+            return;
+          }
+          await initOrientation();
+          recalibrate();
+        } else {
+          startDesktopMode();
+        }
+      });
+
+      window.addEventListener('pointerdown', unlockAudio, { passive: true });
+      window.addEventListener('touchstart', unlockAudio, { passive: true });
+      window.addEventListener('click', unlockAudio, { passive: true });
+
+      start();
+    })();
+  </script>
+</body>
+</html>
