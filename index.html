@@ -41,6 +41,8 @@
       place-items: center;
       touch-action: manipulation;
       user-select: none;
+      min-height: 100vh;
+      min-height: 100dvh;
     }
 
     .bg {
@@ -106,6 +108,7 @@
       position: relative;
       width: 100vw;
       height: 100vh;
+      height: 100dvh;
       display: grid;
       grid-template-rows: auto 1fr auto;
       align-items: center;
@@ -141,6 +144,7 @@
     }
 
     .state-searching .store-name,
+    .state-locked .store-name,
     .state-error .store-name,
     .state-desktop .store-name {
       opacity: .95;
@@ -170,6 +174,8 @@
       display: grid;
       place-items: center;
       margin: 0 auto;
+      perspective: 1200px;
+      transform-style: preserve-3d;
       filter: drop-shadow(0 0 18px rgba(245,166,35,.22));
     }
 
@@ -186,10 +192,26 @@
       position: absolute;
       width: 0;
       height: 0;
+      transform-style: preserve-3d;
       transform: rotate(0deg);
       transition: transform .4s ease;
       will-change: transform;
       filter: drop-shadow(0 0 10px rgba(245,166,35,.5));
+    }
+
+    .needle-float {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      transform-style: preserve-3d;
+      animation: floatNeedle 4.8s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes floatNeedle {
+      0%, 100% { transform: translate3d(0, -8px, 22px) rotateX(12deg); }
+      50% { transform: translate3d(0, 8px, 30px) rotateX(4deg); }
     }
 
     .pointer::before,
@@ -199,6 +221,7 @@
       left: 50%;
       transform: translateX(-50%);
       clip-path: polygon(50% 0, 100% 100%, 50% 82%, 0 100%);
+      backface-visibility: hidden;
     }
 
     .pointer::before {
@@ -207,6 +230,7 @@
       background: linear-gradient(180deg, rgba(245,166,35,1) 0%, rgba(245,166,35,.82) 48%, rgba(245,166,35,.38) 100%);
       top: calc(clamp(13rem, 35vw, 17rem) * -0.83);
       box-shadow: 0 0 0 1px rgba(245,166,35,.22), 0 0 30px rgba(245,166,35,.16);
+      transform: translateX(-50%) translateZ(24px);
     }
 
     .pointer::after {
@@ -218,6 +242,7 @@
       top: calc(clamp(13rem, 35vw, 17rem) * -0.06);
       box-shadow: 0 0 0 6px rgba(245,166,35,.07), 0 0 20px rgba(245,166,35,.15);
       clip-path: none;
+      transform: translateX(-50%) translateZ(36px);
     }
 
     .state-locked .pointer::before {
@@ -225,8 +250,8 @@
     }
 
     @keyframes pulse {
-      0%, 100% { transform: translateX(-50%) scale(1); filter: brightness(1); }
-      50% { transform: translateX(-50%) scale(1.03); filter: brightness(1.2); }
+      0%, 100% { transform: translateX(-50%) translateZ(24px) scale(1); filter: brightness(1); }
+      50% { transform: translateX(-50%) translateZ(24px) scale(1.03); filter: brightness(1.2); }
     }
 
     .center-dot {
@@ -270,8 +295,8 @@
       transition: opacity .25s ease, transform .25s ease;
     }
 
-    .state-searching .nearby-panel,
-    .state-locked .nearby-panel {
+    .state-searching.has-nearby .nearby-panel,
+    .state-locked.has-nearby .nearby-panel {
       opacity: 1;
       pointer-events: auto;
     }
@@ -399,6 +424,85 @@
     }
 
     .state-desktop .desktop-note { display: block; }
+    .state-desktop .pointer {
+      opacity: .6;
+      filter: saturate(.7);
+    }
+    .state-desktop .compass-shell::after {
+      content: 'COMPASS UNAVAILABLE';
+      position: absolute;
+      left: 50%;
+      bottom: -1.2rem;
+      transform: translateX(-50%);
+      padding: .28rem .55rem;
+      border-radius: 999px;
+      border: 1px solid rgba(245,166,35,.25);
+      background: rgba(10,10,10,.78);
+      color: var(--muted);
+      font-size: .56rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      .app {
+        padding-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 5.5rem);
+      }
+
+      .nearby-panel {
+        bottom: calc(max(18px, env(safe-area-inset-bottom)) + 8.4rem);
+      }
+
+      .recalibrate {
+        bottom: calc(max(18px, env(safe-area-inset-bottom)) + 4.2rem);
+      }
+    }
+
+    .launch-panel {
+      display: grid;
+      gap: .5rem;
+      justify-items: center;
+      margin-top: .5rem;
+      opacity: 1;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+
+    .launch-panel.hidden {
+      opacity: 0 !important;
+      transform: translateY(-8px) !important;
+      pointer-events: none;
+    }
+
+    .launch-button {
+      border: 1px solid rgba(245,166,35,.4);
+      background: linear-gradient(180deg, rgba(245,166,35,.2), rgba(10,10,10,.92));
+      color: var(--text);
+      font: inherit;
+      font-size: .78rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      padding: .8rem 1rem;
+      border-radius: 999px;
+      box-shadow: 0 0 0 1px rgba(245,166,35,.08), 0 0 26px rgba(245,166,35,.12);
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+    }
+
+    .launch-button:active {
+      transform: translateY(1px);
+    }
+
+    .launch-copy {
+      color: var(--muted);
+      font-size: .74rem;
+      letter-spacing: .08em;
+      max-width: min(90vw, 34rem);
+      text-align: center;
+      line-height: 1.35;
+      text-transform: uppercase;
+    }
 
     .error {
       color: var(--danger);
@@ -431,25 +535,31 @@
 
   <main class="app state-searching" id="app">
     <section class="hud-top">
-      <div class="store-name" id="storeName">SCANNING…</div>
-      <div class="status" id="status">REQUESTING LOCATION</div>
+    <div class="store-name" id="storeName" aria-live="polite" aria-atomic="true">SCANNING...</div>
+    <div class="status" id="status" aria-live="polite" aria-atomic="true">REQUESTING LOCATION</div>
       <div class="desktop-note" id="desktopNote">Open this on a mobile device with compass support to get live waypoint guidance.</div>
+      <div class="launch-panel" id="launchPanel">
+        <button class="launch-button" id="startBtn" type="button">Enable Location + Motion</button>
+        <div class="launch-copy">Tap once to request your phone's location and compass access, then we can point to the shop.</div>
+      </div>
     </section>
 
     <section class="center" aria-label="Waypoint compass">
       <div class="compass-shell" aria-hidden="true">
         <div class="glow-ring"></div>
-        <div class="pointer" id="pointer"></div>
+        <div class="needle-float">
+          <div class="pointer" id="pointer"></div>
+        </div>
         <div class="center-dot"></div>
       </div>
     </section>
 
     <section class="hud-bottom">
-      <div class="distance" id="distance">--</div>
-      <div class="subtext" id="subtext">SCANNING…</div>
+      <div class="distance" id="distance" aria-live="polite" aria-atomic="true">--</div>
+      <div class="subtext" id="subtext">SCANNING...</div>
     </section>
 
-    <section class="nearby-panel" id="nearbyPanel" aria-label="Nearby alternatives">
+    <section class="nearby-panel" id="nearbyPanel" aria-label="Nearby alternatives" hidden>
       <div class="nearby-title">Other Closest Targets</div>
       <div class="nearby-list" id="nearbyList"></div>
     </section>
@@ -467,7 +577,13 @@
       const subtextEl = document.getElementById('subtext');
       const nearbyPanelEl = document.getElementById('nearbyPanel');
       const nearbyListEl = document.getElementById('nearbyList');
+      const launchPanelEl = document.getElementById('launchPanel');
+      const startBtn = document.getElementById('startBtn');
       const recalibrateBtn = document.getElementById('recalibrate');
+      const defaultStartLabel = startBtn.textContent;
+
+      const needsActivation = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+      let googleMapsLoader = null;
 
       const state = {
         geo: null,
@@ -478,9 +594,15 @@
         audioCtx: null,
         audioUnlocked: false,
         orientationActive: false,
+        absoluteHeadingReceived: false,
+        orientationFallbackActive: false,
+        pointerUpdateTimer: null,
+        geoWatchActive: false,
         useDesktopFallback: !('DeviceOrientationEvent' in window),
         watchId: null,
         overpassDisabled: location.protocol === 'file:',
+        started: false,
+        starting: false,
       };
 
       function setState(name) {
@@ -507,7 +629,8 @@
         nearbyListEl.replaceChildren();
         const currentId = state.target?.id;
         const others = state.candidates.filter(place => place.id !== currentId).slice(0, 5);
-        nearbyPanelEl.style.display = others.length ? '' : 'none';
+        nearbyPanelEl.hidden = !others.length;
+        app.classList.toggle('has-nearby', others.length > 0);
         for (const place of others) {
           const button = document.createElement('button');
           button.type = 'button';
@@ -539,6 +662,14 @@
         storeNameEl.textContent = text;
       }
 
+      function setLaunchPanelVisible(visible, label = '') {
+        launchPanelEl.classList.toggle('hidden', !visible);
+        startBtn.textContent = label || defaultStartLabel;
+        startBtn.disabled = !visible;
+        if (!visible) startBtn.setAttribute('aria-hidden', 'true');
+        else startBtn.removeAttribute('aria-hidden');
+      }
+
       function setDistance(distanceMeters) {
         if (!Number.isFinite(distanceMeters)) {
           distanceEl.textContent = '--';
@@ -560,12 +691,26 @@
         return `Walk time ~${hours}h ${rem}m`;
       }
 
+      function formatTargetSubtext(place, { desktop = false } = {}) {
+        const source = place?.source || 'Nearby target';
+        if (!place || !Number.isFinite(place.distance) || place.distance > 3000) {
+          return desktop ? `${source} · open on mobile for live compass heading` : source;
+        }
+        const travel = formatWalkTime(place.distance);
+        return desktop
+          ? `${travel} · open on mobile for live compass heading`
+          : `${travel} - ${source}`;
+      }
+
       function normalizeHeading(evt) {
         if (typeof evt.webkitCompassHeading === 'number') {
           return evt.webkitCompassHeading;
         }
         if (typeof evt.alpha === 'number') {
-          return (360 - evt.alpha) % 360;
+          const screenAngle = (screen.orientation && typeof screen.orientation.angle === 'number')
+            ? screen.orientation.angle
+            : 0;
+          return ((360 - evt.alpha) + screenAngle) % 360;
         }
         return null;
       }
@@ -598,12 +743,86 @@
       function rotatePointer() {
         if (!state.target || !state.geo) return;
         if (state.heading == null) {
-          pointer.style.transform = 'rotate(0deg)';
+          if (state.useDesktopFallback && Number.isFinite(state.target.bearing)) {
+            pointer.style.transform = `rotate(${state.target.bearing}deg)`;
+          } else {
+            pointer.style.transform = 'rotate(0deg)';
+          }
           return;
         }
         const targetBearing = bearingBetween(state.geo.lat, state.geo.lon, state.target.lat, state.target.lon);
         const relative = angleDifference(targetBearing, state.heading);
         pointer.style.transform = `rotate(${relative}deg)`;
+      }
+
+      function schedulePointerUpdate() {
+        if (state.pointerUpdateTimer) return;
+        state.pointerUpdateTimer = window.setTimeout(() => {
+          state.pointerUpdateTimer = null;
+          rotatePointer();
+        }, 80);
+      }
+
+      function syncLockedTargetDisplay() {
+        if (!state.target) return;
+        setStoreName(state.target.name || 'Unknown liquor store');
+        setDistance(state.target.distance);
+        setSubtext(formatTargetSubtext(state.target));
+      }
+
+      function refreshCandidatesForGeo() {
+        if (!state.geo || !state.candidates.length) return;
+        const { lat, lon } = state.geo;
+        const currentTargetId = state.target?.id;
+        state.candidates = state.candidates
+          .map(place => ({
+            ...place,
+            distance: haversineMeters(lat, lon, place.lat, place.lon),
+            bearing: bearingBetween(lat, lon, place.lat, place.lon),
+          }))
+          .sort((a, b) => a.distance - b.distance);
+        if (currentTargetId) {
+          const updatedTarget = state.candidates.find(place => place.id === currentTargetId);
+          if (updatedTarget) {
+            state.target = updatedTarget;
+            if (state.useDesktopFallback) {
+              activateDesktopMode(updatedTarget);
+            } else {
+              syncLockedTargetDisplay();
+            }
+          }
+        }
+        renderNearbyList();
+      }
+
+      function applyGeoUpdate(pos) {
+        state.geo = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        refreshCandidatesForGeo();
+        schedulePointerUpdate();
+      }
+
+      function startGeoWatch() {
+        if (!navigator.geolocation || state.geoWatchActive) return;
+        state.watchId = navigator.geolocation.watchPosition(
+          pos => {
+            applyGeoUpdate(pos);
+          },
+          () => {},
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0,
+          }
+        );
+        state.geoWatchActive = true;
+      }
+
+      function stopGeoWatch() {
+        if (state.watchId != null && navigator.geolocation?.clearWatch) {
+          navigator.geolocation.clearWatch(state.watchId);
+        }
+        state.watchId = null;
+        state.geoWatchActive = false;
       }
 
       async function unlockAudio() {
@@ -640,16 +859,14 @@
 
       function setLockedTarget(place) {
         state.target = place;
+        state.lockBeepPlayed = false;
         setState('state-locked');
         setStatus('LOCKED');
-        setStoreName(`LOCKED: ${place.name || 'Unknown liquor store'}`);
+        setStoreName(place.name || 'Unknown liquor store');
         setDistance(place.distance);
-        const label = place.kind ? `${place.kind} · ${place.source}` : place.source;
-        setSubtext(`${formatWalkTime(place.distance)} · ${label}`);
-        if (!state.lockBeepPlayed) {
-          state.lockBeepPlayed = true;
-          beep();
-        }
+        setSubtext(formatTargetSubtext(place));
+        beep();
+        state.lockBeepPlayed = true;
         rotatePointer();
         renderNearbyList();
       }
@@ -661,6 +878,8 @@
         distanceEl.textContent = '';
         setSubtext('Location or store scan failed');
         state.candidates = [];
+        state.started = false;
+        setLaunchPanelVisible(true, 'Try Again');
         renderNearbyList();
       }
 
@@ -678,56 +897,82 @@
         });
       }
 
+      function loadGoogleMapsPlaces(key) {
+        if (window.google?.maps?.places?.PlacesService) return Promise.resolve();
+        if (!googleMapsLoader) {
+          googleMapsLoader = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.dataset.googleMapsSdk = 'true';
+            script.async = true;
+            script.defer = true;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places`;
+            script.onload = () => resolve();
+            script.onerror = () => {
+              googleMapsLoader = null;
+              reject(new Error('Google Maps SDK failed to load'));
+            };
+            document.head.appendChild(script);
+          });
+        }
+        return googleMapsLoader;
+      }
+
       async function searchGooglePlaces(lat, lon) {
         const key = new URLSearchParams(location.search).get('googleKey') || window.GOOGLE_PLACES_API_KEY;
         if (!key) return [];
+        try {
+          await loadGoogleMapsPlaces(key);
+        } catch (_) {
+          return [];
+        }
         const radius = 10000;
         const queries = [
           { keyword: 'liquor store', type: 'liquor_store', kind: 'Liquor store' },
           { keyword: 'wine shop', type: 'liquor_store', kind: 'Wine shop' },
-          { keyword: 'wine', type: 'store', kind: 'Wine store' },
+          { keyword: 'wine', kind: 'Wine store' },
           { keyword: 'bar', type: 'bar', kind: 'Bar' },
           { keyword: 'resto bar', type: 'restaurant', kind: 'Resto bar' },
         ];
         const seen = new Map();
+        const service = new google.maps.places.PlacesService(document.createElement('div'));
+        const origin = new google.maps.LatLng(lat, lon);
+        const nearbySearch = request => new Promise(resolve => {
+          service.nearbySearch(request, (results, status) => resolve({ results, status }));
+        });
         for (const query of queries) {
-          const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json');
-          url.searchParams.set('location', `${lat},${lon}`);
-          url.searchParams.set('radius', String(radius));
-          url.searchParams.set('keyword', query.keyword);
-          url.searchParams.set('type', query.type);
-          url.searchParams.set('key', key);
-          let res;
           try {
-            res = await fetch(url.toString(), { mode: 'cors' });
+            const { results, status } = await nearbySearch({
+              location: origin,
+              radius,
+              keyword: query.keyword,
+              ...(query.type ? { type: query.type } : {}),
+            });
+            const ok = google.maps.places.PlacesServiceStatus.OK;
+            const zero = google.maps.places.PlacesServiceStatus.ZERO_RESULTS;
+            if (status !== ok && status !== zero) continue;
+            if (!Array.isArray(results) || !results.length) continue;
+            for (const r of results) {
+              if (!r.geometry || !r.geometry.location) continue;
+              const loc = r.geometry.location;
+              const pLat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
+              const pLng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
+              const name = r.name || query.kind;
+              const keyId = `${r.place_id || name}|${pLat.toFixed(6)}|${pLng.toFixed(6)}`;
+              const candidate = {
+                id: `g:${keyId}`,
+                name,
+                kind: query.kind,
+                lat: pLat,
+                lon: pLng,
+                distance: haversineMeters(lat, lon, pLat, pLng),
+                bearing: bearingBetween(lat, lon, pLat, pLng),
+                source: 'Google Places',
+              };
+              const prev = seen.get(keyId);
+              if (!prev || candidate.distance < prev.distance) seen.set(keyId, candidate);
+            }
           } catch (_) {
             continue;
-          }
-          if (!res.ok) continue;
-          let data;
-          try {
-            data = await res.json();
-          } catch (_) {
-            continue;
-          }
-          if (!Array.isArray(data.results) || !data.results.length) continue;
-          for (const r of data.results) {
-            if (!r.geometry || !r.geometry.location) continue;
-            const p = r.geometry.location;
-            const name = r.name || query.kind;
-            const keyId = `${name}|${p.lat.toFixed(6)}|${p.lng.toFixed(6)}`;
-            const candidate = {
-              id: `g:${keyId}`,
-              name,
-              kind: query.kind,
-              lat: p.lat,
-              lon: p.lng,
-              distance: haversineMeters(lat, lon, p.lat, p.lng),
-              bearing: bearingBetween(lat, lon, p.lat, p.lng),
-              source: 'Google Places',
-            };
-            const prev = seen.get(keyId);
-            if (!prev || candidate.distance < prev.distance) seen.set(keyId, candidate);
           }
         }
         return [...seen.values()].sort((a, b) => a.distance - b.distance);
@@ -736,6 +981,7 @@
       async function searchOverpass(lat, lon) {
         if (state.overpassDisabled) return [];
         const radius = 7000;
+        const namedVenueRegex = 'wine|wines|bar|resto\\s*bar|restobar';
         const queries = [
           `
           [out:json][timeout:20];
@@ -743,9 +989,12 @@
             node(around:${radius},${lat},${lon})["shop"="alcohol"];
             way(around:${radius},${lat},${lon})["shop"="alcohol"];
             relation(around:${radius},${lat},${lon})["shop"="alcohol"];
-            node(around:${radius},${lat},${lon})["amenity"="alcohol"];
-            way(around:${radius},${lat},${lon})["amenity"="alcohol"];
-            relation(around:${radius},${lat},${lon})["amenity"="alcohol"];
+            node(around:${radius},${lat},${lon})["shop"="wine"];
+            way(around:${radius},${lat},${lon})["shop"="wine"];
+            relation(around:${radius},${lat},${lon})["shop"="wine"];
+            node(around:${radius},${lat},${lon})["shop"="beverages"]["name"~"${namedVenueRegex}",i];
+            way(around:${radius},${lat},${lon})["shop"="beverages"]["name"~"${namedVenueRegex}",i];
+            relation(around:${radius},${lat},${lon})["shop"="beverages"]["name"~"${namedVenueRegex}",i];
           );
           out center tags;
         `,
@@ -758,15 +1007,18 @@
             node(around:${radius},${lat},${lon})["amenity"="pub"];
             way(around:${radius},${lat},${lon})["amenity"="pub"];
             relation(around:${radius},${lat},${lon})["amenity"="pub"];
+            node(around:${radius},${lat},${lon})["amenity"="restaurant"]["name"~"${namedVenueRegex}",i];
+            way(around:${radius},${lat},${lon})["amenity"="restaurant"]["name"~"${namedVenueRegex}",i];
+            relation(around:${radius},${lat},${lon})["amenity"="restaurant"]["name"~"${namedVenueRegex}",i];
           );
           out center tags;
         `,
           `
           [out:json][timeout:20];
           (
-            node(around:${radius},${lat},${lon})["amenity"="restaurant"]["name"~"wine|wines|bar|resto",i];
-            way(around:${radius},${lat},${lon})["amenity"="restaurant"]["name"~"wine|wines|bar|resto",i];
-            relation(around:${radius},${lat},${lon})["amenity"="restaurant"]["name"~"wine|wines|bar|resto",i];
+            node(around:${radius},${lat},${lon})["name"~"${namedVenueRegex}",i]["shop"!="yes"];
+            way(around:${radius},${lat},${lon})["name"~"${namedVenueRegex}",i]["shop"!="yes"];
+            relation(around:${radius},${lat},${lon})["name"~"${namedVenueRegex}",i]["shop"!="yes"];
           );
           out center tags;
         `
@@ -810,13 +1062,15 @@
               .filter(Boolean)
               .sort((a, b) => a.distance - b.distance);
             if (candidates.length) return candidates;
-          } catch (_) {
-            continue;
+        } catch (err) {
+          if (location.protocol === 'file:') {
+            state.overpassDisabled = true;
           }
+          continue;
         }
-        state.overpassDisabled = true;
-        return [];
       }
+      return [];
+    }
 
       async function findNearestStore(lat, lon) {
         setState('state-searching');
@@ -845,6 +1099,7 @@
           unique.push(place);
         }
         state.candidates = unique;
+        app.classList.toggle('has-nearby', unique.length > 0);
         renderNearbyList();
 
         if (unique.length) return unique[0];
@@ -861,7 +1116,7 @@
         const heading = normalizeHeading(evt);
         if (heading == null) return;
         state.heading = heading;
-        if (state.target && state.geo) rotatePointer();
+        if (state.target && state.geo) schedulePointerUpdate();
       }
 
       async function initOrientation({ silent = false } = {}) {
@@ -880,8 +1135,25 @@
           }
         }
 
-        window.addEventListener('deviceorientationabsolute', onHeadingEvent, true);
-        window.addEventListener('deviceorientation', onHeadingEvent, true);
+        state.absoluteHeadingReceived = false;
+        state.orientationFallbackActive = false;
+        const absoluteListener = evt => {
+          const before = state.absoluteHeadingReceived;
+          onHeadingEvent(evt);
+          if (normalizeHeading(evt) == null) return;
+          state.absoluteHeadingReceived = true;
+          if (!before && state.orientationFallbackActive) {
+            window.removeEventListener('deviceorientation', onHeadingEvent, true);
+            state.orientationFallbackActive = false;
+          }
+        };
+        window.addEventListener('deviceorientationabsolute', absoluteListener, true);
+        window.setTimeout(() => {
+          if (state.absoluteHeadingReceived || state.useDesktopFallback) return;
+          window.addEventListener('deviceorientation', onHeadingEvent, true);
+          state.orientationFallbackActive = true;
+        }, 1000);
+        state.orientationAbsoluteListener = absoluteListener;
         state.orientationActive = true;
         return true;
       }
@@ -893,7 +1165,7 @@
         distanceEl.textContent = Number.isFinite(place?.bearing)
           ? `BEARING ${Math.round(place.bearing)}°`
           : 'BEARING --';
-        setSubtext(`${formatWalkTime(place?.distance || 0)} · open on mobile for live compass heading`);
+        setSubtext(formatTargetSubtext(place, { desktop: true }));
         if (place && Number.isFinite(place.bearing)) {
           pointer.style.transform = `rotate(${place.bearing}deg)`;
         } else {
@@ -902,24 +1174,42 @@
       }
 
       async function start() {
+        if (state.starting) return;
+        state.starting = true;
+        state.started = true;
+        setLaunchPanelVisible(true, 'REQUESTING PERMISSIONS...');
+        startBtn.disabled = true;
+        if (!state.useDesktopFallback) {
+          const motionOk = await initOrientation({ silent: false });
+          if (!motionOk) {
+            state.starting = false;
+            state.started = false;
+            return;
+          }
+        }
         try {
           const pos = await getCurrentPosition();
-          state.geo = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+          applyGeoUpdate(pos);
+          startGeoWatch();
         } catch (err) {
+          state.starting = false;
+          state.started = false;
           setError(err && err.code === 1 ? 'Location denied' : 'Location unavailable');
           return;
         }
 
         const store = await findNearestStore(state.geo.lat, state.geo.lon);
         if (!store) {
+          state.starting = false;
+          state.started = false;
           setError('No liquor stores found nearby');
           return;
         }
         setLockedTarget(store);
+        setLaunchPanelVisible(false);
+        state.starting = false;
         if (state.useDesktopFallback) {
           activateDesktopMode(store);
-        } else {
-          initOrientation({ silent: true }).catch(() => {});
         }
       }
 
@@ -934,9 +1224,9 @@
         setSubtext('Recalibrating waypoint...');
         unlockAudio();
         if (state.geo) {
-          try {
-            await initOrientation();
-          } catch (_) {}
+          if (!state.useDesktopFallback) {
+            await initOrientation({ silent: true }).catch(() => {});
+          }
           try {
             const store = await findNearestStore(state.geo.lat, state.geo.lon);
             if (!store) {
@@ -950,6 +1240,8 @@
           } catch (_) {
             setError('Store scan failed');
           }
+        } else if (!state.starting) {
+          await start();
         }
       }
 
@@ -961,17 +1253,35 @@
             return;
           }
           await initOrientation();
-          recalibrate();
+          await recalibrate();
         } else {
-          startDesktopMode();
+          if (!state.geo) {
+            await start();
+            return;
+          }
+          await recalibrate();
         }
+      });
+
+      startBtn.addEventListener('click', async () => {
+        await unlockAudio();
+        await start();
       });
 
       window.addEventListener('pointerdown', unlockAudio, { passive: true });
       window.addEventListener('touchstart', unlockAudio, { passive: true });
       window.addEventListener('click', unlockAudio, { passive: true });
 
-      start();
+      if (needsActivation) {
+        setState('state-searching');
+        setStatus('TAP TO ENABLE');
+        setStoreName('READY WHEN YOU ARE');
+        setSubtext('Tap once to request location and compass access');
+        setLaunchPanelVisible(true);
+      } else {
+        setLaunchPanelVisible(false);
+        start();
+      }
     })();
   </script>
 </body>
